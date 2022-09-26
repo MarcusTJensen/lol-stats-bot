@@ -9,9 +9,10 @@ use serenity::framework::standard::macros::{command, group};
 use serenity::framework::standard::{StandardFramework, CommandResult};
 use serde::{Serialize, Deserialize};
 use urlencoding::encode;
+mod champion;
 
 #[group]
-#[commands(ping, pong, ranked)]
+#[commands(ping, pong, ranked, mastery)]
 struct General;
 
 struct Handler;
@@ -70,6 +71,18 @@ async fn ranked(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     Ok(())
 }
 
+#[command]
+async fn mastery(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let summ_name = args.single_quoted::<String>().unwrap();
+    let encoded = encode(&summ_name);
+
+    let champs = champion::get_champs().await.unwrap();
+
+    msg.reply(ctx, "LMAO").await?;
+
+    Ok(())
+}
+
 async fn get_summoner(summ_name: &str, api_key: &str) -> Result<Summoner, Box<dyn Error>> {
     let res: Summoner = reqwest::get(format!("https://euw1.api.riotgames.com/lol/summoner/v4/summoners/by-name/\
         {}?api_key={}", summ_name, api_key))
@@ -93,7 +106,7 @@ async fn get_ranks(summ_name: &str) -> Result<Vec<String>, Box<dyn Error + Send 
     let res_json: Vec<Rank> = serde_json::from_str(&res).unwrap();
     println!("{:?}", res_json);
     let msgs = res_json.iter().map(|r| {
-        format!("{}, {} {}, points: {}, wins: {}, losses: {}", r.queueType, r.tier, r.rank, r.leaguePoints, r.wins, r.losses)
+        format!("{}\n{} {}\npoints: {}\nwins: {}\nlosses: {}", r.queueType, r.tier, r.rank, r.leaguePoints, r.wins, r.losses)
     }).collect::<Vec<String>>();
     Ok(msgs)
 }
@@ -115,4 +128,11 @@ struct Summoner {
     name: String,
     summonerLevel: i32,
     profileIconId: i32
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Mastery {
+    championId: i32,
+    championLevel: i32,
+    championPoints: i32,
 }
